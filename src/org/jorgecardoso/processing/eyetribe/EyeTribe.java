@@ -30,6 +30,9 @@ package org.jorgecardoso.processing.eyetribe;
 
 import processing.core.*;
 
+import com.theeyetribe.client.*;
+import com.theeyetribe.client.data.*;
+
 /**
  * This is a template class and can be used to start a new processing library or tool.
  * Make sure you rename this class as well as the name of the example package 'template' 
@@ -41,12 +44,13 @@ import processing.core.*;
  * @example Hello 
  */
 
-public class HelloLibrary {
+public class EyeTribe implements IGazeListener, ITrackerStateListener {
 	
 	// myParent is a reference to the parent sketch
 	PApplet myParent;
 
 	int myVariable = 0;
+	GazeManager gm;
 	
 	public final static String VERSION = "##library.prettyVersion##";
 	
@@ -58,11 +62,25 @@ public class HelloLibrary {
 	 * @example Hello
 	 * @param theParent
 	 */
-	public HelloLibrary(PApplet theParent) {
+	public EyeTribe(PApplet theParent) {
 		myParent = theParent;
 		welcome();
+		
+		gm = GazeManager.getInstance();        
+   		boolean success = gm.activate(GazeManager.ApiVersion.VERSION_1_0, GazeManager.ClientMode.PUSH);
+   		System.out.println(""+success);
+
+    	
+    	gm.addGazeListener(this);
+    	gm.addTrackerStateListener(this);
+    	
 	}
 	
+	  public void dispose() {
+		gm.removeGazeListener(EyeTribe.this);
+		gm.deactivate();
+       	System.out.println("GazeManager deactivated.");
+  }
 	
 	private void welcome() {
 		System.out.println("##library.name## ##library.prettyVersion## by ##author##");
@@ -99,5 +117,24 @@ public class HelloLibrary {
 	public int getVariable() {
 		return myVariable;
 	}
+	
+	 @Override
+    public void onGazeUpdate(GazeData gazeData)
+    {
+        //System.out.println(gazeData.stateToString());
+         System.out.println(gazeData.leftEye.toString());
+    }
+    
+    @Override
+    public void onTrackerStateChanged(int trackerState) {
+    	System.out.println(( GazeManager.TrackerState.fromInt(trackerState)).toString() );
+    
+    }
+    @Override
+    public void onScreenStatesChanged(int screenIndex, int screenResolutionWidth, int screenResolutionHeight,
+            float screenPhysicalWidth, float screenPhysicalHeight) {
+    }
+    
+    
 }
 
