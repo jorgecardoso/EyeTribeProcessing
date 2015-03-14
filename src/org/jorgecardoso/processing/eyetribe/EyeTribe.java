@@ -27,6 +27,7 @@
 
 package org.jorgecardoso.processing.eyetribe;
 
+import java.lang.reflect.*;
 
 import processing.core.*;
 
@@ -49,12 +50,18 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener {
 	// myParent is a reference to the parent sketch
 	PApplet myParent;
 
-	int myVariable = 0;
+
 	GazeManager gm;
 	
 	public final static String VERSION = "##library.prettyVersion##";
 	
+    private Method gazeUpdateMethod = null;
 
+
+	private boolean isTracking = false;
+	private boolean isTrackingGaze = false;
+	private boolean isTrackingEyes = false;
+	
 	/**
 	 * a Constructor, usually called in the setup() method in your sketch to
 	 * initialize and start the library.
@@ -66,30 +73,36 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener {
 		myParent = theParent;
 		welcome();
 		
+		try {
+      		gazeUpdateMethod =
+        	myParent.getClass().getMethod("onGazeUpdate",  new Class[] { 
+        		GazeData.class
+      		});
+      
+    	} catch (Exception e) {
+    		System.err.println("onGazeUpdate() method not defined. ");
+    	}
+    
 		gm = GazeManager.getInstance();        
    		boolean success = gm.activate(GazeManager.ApiVersion.VERSION_1_0, GazeManager.ClientMode.PUSH);
    		System.out.println(""+success);
 
-    	
     	gm.addGazeListener(this);
     	gm.addTrackerStateListener(this);
     	
 	}
 	
-	  public void dispose() {
+	public void dispose() {
 		gm.removeGazeListener(EyeTribe.this);
 		gm.deactivate();
        	System.out.println("GazeManager deactivated.");
-  }
+ 	}
 	
 	private void welcome() {
 		System.out.println("##library.name## ##library.prettyVersion## by ##author##");
 	}
 	
-	
-	public String sayHello() {
-		return "hello library.";
-	}
+
 	/**
 	 * return the version of the library.
 	 * 
@@ -99,30 +112,43 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener {
 		return VERSION;
 	}
 
-	/**
-	 * 
-	 * @param theA
-	 *          the width of test
-	 * @param theB
-	 *          the height of test
-	 */
-	public void setVariable(int theA, int theB) {
-		myVariable = theA + theB;
+	public boolean isTracking() {
+		return this.isTracking;
 	}
-
-	/**
-	 * 
-	 * @return int
-	 */
-	public int getVariable() {
-		return myVariable;
+	
+	public boolean isTrackingGaze() {
+		return this.isTrackingGaze;
 	}
+	
+	public boolean isTrackingEyes() {
+		return this.isTrackingEyes;
+	}	
 	
 	 @Override
     public void onGazeUpdate(GazeData gazeData)
     {
         //System.out.println(gazeData.stateToString());
-         System.out.println(gazeData.leftEye.toString());
+        //System.out.println(gazeData.leftEye.toString());
+        
+        if (gazeData != null) {
+        	isTracking =  ((gazeData.STATE_TRACKING_PRESENCE & gazeData.state) != 0);
+    	    isTrackingGaze =  ((gazeData.STATE_TRACKING_GAZE & gazeData.state) != 0);
+    	    isTrackingEyes =  ((gazeData.STATE_TRACKING_EYES & gazeData.state) != 0);
+        }
+         
+		if (gazeData != null && gazeUpdateMethod != null) {
+      		try {
+        		gazeUpdateMethod.invoke(myParent, new Object[] {
+          			gazeData
+        		}    );
+      		} catch (Exception e) {
+        		System.err.println("Disabling gaze updates because of an error.");
+        		System.err.println(e.getMessage());
+        		e.printStackTrace();
+        		gazeUpdateMethod = null;
+      		}
+    	}
+         
     }
     
     @Override
