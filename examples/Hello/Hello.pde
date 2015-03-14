@@ -88,3 +88,7 @@ void onGazeUpdate(GazeData data) {
     rightEye.y = (float)(data.rightEye.pupilCenterCoordinates.y*height);
   }
 }
+
+void trackerStateChanged(String state) {
+  println("Tracker state: " + state);
+}

@@ -56,6 +56,7 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener {
 	public final static String VERSION = "##library.prettyVersion##";
 	
     private Method gazeUpdateMethod = null;
+    private Method trackerStateChangedMethod = null;
 
 
 	private boolean isTracking = false;
@@ -82,6 +83,16 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener {
     	} catch (Exception e) {
     		System.err.println("onGazeUpdate() method not defined. ");
     	}
+    	
+		try {
+      		trackerStateChangedMethod =
+        	myParent.getClass().getMethod("trackerStateChanged",  new Class[] { 
+        		String.class
+      		});
+      
+    	} catch (Exception e) {
+    		System.err.println("trackerStateChanged() method not defined. ");
+    	}    	
     
 		gm = GazeManager.getInstance();        
    		boolean success = gm.activate(GazeManager.ApiVersion.VERSION_1_0, GazeManager.ClientMode.PUSH);
@@ -153,9 +164,21 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener {
     
     @Override
     public void onTrackerStateChanged(int trackerState) {
-    	System.out.println(( GazeManager.TrackerState.fromInt(trackerState)).toString() );
-    
+    	//System.out.println( ( GazeManager.TrackerState.fromInt(trackerState)).toString() );
+    	if ( trackerStateChangedMethod != null ) {
+      		try {
+        		trackerStateChangedMethod.invoke(myParent, new Object[] {
+          			(GazeManager.TrackerState.fromInt(trackerState)).toString()
+        		}    );
+      		} catch (Exception e) {
+        		System.err.println("Disabling tracker state updates because of an error.");
+        		System.err.println(e.getMessage());
+        		e.printStackTrace();
+        		trackerStateChangedMethod = null;
+      		}
+    	}
     }
+    
     @Override
     public void onScreenStatesChanged(int screenIndex, int screenResolutionWidth, int screenResolutionHeight,
             float screenPhysicalWidth, float screenPhysicalHeight) {
