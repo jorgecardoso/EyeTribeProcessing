@@ -18,7 +18,7 @@ boolean sketchFullScreen() {
 void setup() {
   size(displayWidth, displayHeight);
   //size(800, 600);
-  
+
   smooth();
   tracking = new ArrayList<PVector>();
   point = new PVector();
@@ -37,28 +37,30 @@ void draw() {
   //text(eyeTribe.sayHello(), 40, 200);
 
   if (! calibrating) {
-    PVector betweenEyes = new PVector();
-    PVector.sub(rightEye, leftEye, betweenEyes);
+    if ( leftEye != null ) {
+      fill(255);
+      stroke(0);
+      ellipse(leftEye.x*width, leftEye.y*height, 60, 30);
 
-    float angle = betweenEyes.heading();
-    pushMatrix();
-    translate(leftEye.x, leftEye.y);
-    PVector rEye = PVector.sub(leftEye, rightEye);
-    rotate(angle);
-    fill(255);
-    stroke(0);
-    ellipse(0, 0, 60, 30);
-    fill(100);
-    ellipse(rEye.x, 0, 60, 30);
-    fill(#1A78D3);
-    ellipse(0, 0, 20, 20);
-    ellipse(rEye.x, 0, 20, 20);
-    fill(0);
+      fill(#1A78D3);
+      ellipse(leftEye.x*width, leftEye.y*height, 20, 20);
 
-    ellipse(0, 0, 7, 7);
-    ellipse(rEye.x, 0, 7, 7);
+      fill(0);
+      ellipse(leftEye.x*width, leftEye.y*height, 7, 7);
+    }
+    if ( rightEye != null ) {
+      fill(255);
+      stroke(0);
+      ellipse(rightEye.x*width, rightEye.y*height, 60, 30);
 
-    popMatrix();
+      fill(#1A78D3);
+      ellipse(rightEye.x*width, rightEye.y*height, 20, 20);
+
+      fill(0);
+      ellipse(rightEye.x*width, rightEye.y*height, 7, 7);
+    }
+
+
     noFill();
     stroke(255, 0, 0);
     ellipse(point.x, point.y, 30, 30);
@@ -85,34 +87,30 @@ void calibratingPoint(PVector p) {
   calibratingPoint = p.get();
 }
 
-void calibrationEnded(boolean result, double acc, double accRight, double accLeft) {
-	calibrating = false;
-	println("REsult: " + result + " " + acc);
+void calibrationEnded(boolean result, double acc, double accRight, double accLeft, CalibrationResult calibResult) {
+  calibrating = false;
+  println("Result: " + result + " " + acc);
 }
 
-void onGazeUpdate(GazeData data) {
+void onGazeUpdate(PVector gaze, PVector leftEye_, PVector rightEye_, GazeData data) {
 
   //println(eyeTribe.isTracking() + " " + eyeTribe.isTrackingGaze() + " " + eyeTribe.isTrackingEyes() + " " + data.stateToString());
-  if ( eyeTribe.isTrackingGaze() && data.hasSmoothedGazeCoordinates() ) {
-    point.x = (float)(data.smoothedCoordinates.x);
-    point.y = (float)(data.smoothedCoordinates.y);
+  if ( gaze != null ) {
+    point = gaze;
     tracking.add(point.get());
     if (tracking.size() > 500 ) {
       tracking.remove(0);
     }
     //println(point);
   }
-  if ( eyeTribe.isTrackingEyes() ) {
-    leftEye.x = (float)(data.leftEye.pupilCenterCoordinates.x*width);
-    leftEye.y = (float)(data.leftEye.pupilCenterCoordinates.y*height);
 
-    rightEye.x = (float)(data.rightEye.pupilCenterCoordinates.x*width);
-    rightEye.y = (float)(data.rightEye.pupilCenterCoordinates.y*height);
-  }
+  leftEye = leftEye_;
+
+  rightEye = rightEye_;
 }
 
 void trackerStateChanged(String state) {
-  //println("Tracker state: " + state);
+  println("Tracker state: " + state);
 }
 
 void keyPressed() {

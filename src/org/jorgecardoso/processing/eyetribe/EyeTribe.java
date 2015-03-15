@@ -83,7 +83,7 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener, ICalibrat
 		try {
       		gazeUpdateMethod =
         	myParent.getClass().getMethod("onGazeUpdate",  new Class[] { 
-        		GazeData.class
+        		PVector.class, PVector.class, PVector.class, GazeData.class
       		});
       
     	} catch (Exception e) {
@@ -113,7 +113,7 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener, ICalibrat
 		try {
       		calibrationEndedMethod =
         	myParent.getClass().getMethod("calibrationEnded",  new Class[] { 
-        		boolean.class, double.class, double.class, double.class
+        		boolean.class, double.class, double.class, double.class, CalibrationResult.class
       		});
       
     	} catch (Exception e) {
@@ -122,8 +122,12 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener, ICalibrat
     
 		gm = GazeManager.getInstance();        
    		boolean success = gm.activate(GazeManager.ApiVersion.VERSION_1_0, GazeManager.ClientMode.PUSH);
-   		System.out.println(""+success);
+   		//System.out.println(""+success);
 
+		if ( !success ) {
+			System.err.println("Could not activate Eye Tribe. :(");
+			return;
+		}
     	gm.addGazeListener(this);
     	gm.addTrackerStateListener(this);
     	
@@ -166,6 +170,7 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener, ICalibrat
     {
         //System.out.println(gazeData.stateToString());
         //System.out.println(gazeData.leftEye.toString());
+
         
         if (gazeData != null) {
         	isTracking =  ((gazeData.STATE_TRACKING_PRESENCE & gazeData.state) != 0);
@@ -174,9 +179,24 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener, ICalibrat
         }
          
 		if (gazeData != null && gazeUpdateMethod != null) {
+		
+			PVector gaze = null;
+			PVector leftEye = null;
+			PVector rightEye = null;
+			
+			if ( gazeData.hasSmoothedGazeCoordinates() ) {
+    			gaze = new PVector ( (float)(gazeData.smoothedCoordinates.x), (float)(gazeData.smoothedCoordinates.y));
+			}
+			if ( isTrackingEyes && gazeData.leftEye.pupilCenterCoordinates.x != 0 && gazeData.leftEye.pupilCenterCoordinates.y != 0 ) {
+				leftEye = new PVector((float)(gazeData.leftEye.pupilCenterCoordinates.x), (float)(gazeData.leftEye.pupilCenterCoordinates.y));
+			}
+			if ( isTrackingEyes && gazeData.rightEye.pupilCenterCoordinates.x != 0 && gazeData.rightEye.pupilCenterCoordinates.y != 0 ) {
+				rightEye = new PVector((float)(gazeData.rightEye.pupilCenterCoordinates.x), (float)(gazeData.rightEye.pupilCenterCoordinates.y));
+			}
+			
       		try {
         		gazeUpdateMethod.invoke(myParent, new Object[] {
-          			gazeData
+          			gaze, leftEye, rightEye,  gazeData
         		}    );
       		} catch (Exception e) {
         		System.err.println("Disabling gaze updates because of an error.");
@@ -299,7 +319,7 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener, ICalibrat
     	try {
         		calibrationEndedMethod.invoke(myParent, new Object[] {
           			calibResult.result.booleanValue(), calibResult.averageErrorDegree.doubleValue(), calibResult.averageErrorDegreeLeft.doubleValue(),
-          			calibResult.averageErrorDegreeRight.doubleValue()
+          			calibResult.averageErrorDegreeRight.doubleValue(), calibResult
         		}    );
       		} catch (Exception e) {
         		System.err.println("Disabling calibration ended feedback because of an error.");
