@@ -4,15 +4,21 @@ import com.theeyetribe.client.data.*;
 EyeTribe eyeTribe;
 ArrayList<PVector> tracking;
 
+PVector calibratingPoint = null;
 PVector point;
 PVector leftEye, rightEye;
 
+boolean calibrating = false;
+
 boolean sketchFullScreen() {
   return true;
+  //return false;
 }
 
 void setup() {
   size(displayWidth, displayHeight);
+  //size(800, 600);
+  
   smooth();
   tracking = new ArrayList<PVector>();
   point = new PVector();
@@ -30,47 +36,63 @@ void draw() {
   fill(255);
   //text(eyeTribe.sayHello(), 40, 200);
 
-  PVector betweenEyes = new PVector();
-  PVector.sub(rightEye, leftEye, betweenEyes);
+  if (! calibrating) {
+    PVector betweenEyes = new PVector();
+    PVector.sub(rightEye, leftEye, betweenEyes);
 
-  float angle = betweenEyes.heading();
-  pushMatrix();
-  translate(leftEye.x, leftEye.y);
-  PVector rEye = PVector.sub(leftEye, rightEye);
-  rotate(angle);
-  fill(255);
-  stroke(0);
-  ellipse(0, 0, 60, 30);
-  fill(100);
-  ellipse(rEye.x, 0, 60, 30);
-  fill(#1A78D3);
-  ellipse(0, 0, 20, 20);
-  ellipse(rEye.x, 0, 20, 20);
-  fill(0);
+    float angle = betweenEyes.heading();
+    pushMatrix();
+    translate(leftEye.x, leftEye.y);
+    PVector rEye = PVector.sub(leftEye, rightEye);
+    rotate(angle);
+    fill(255);
+    stroke(0);
+    ellipse(0, 0, 60, 30);
+    fill(100);
+    ellipse(rEye.x, 0, 60, 30);
+    fill(#1A78D3);
+    ellipse(0, 0, 20, 20);
+    ellipse(rEye.x, 0, 20, 20);
+    fill(0);
 
-  ellipse(0, 0, 7, 7);
-  ellipse(rEye.x, 0, 7, 7);
+    ellipse(0, 0, 7, 7);
+    ellipse(rEye.x, 0, 7, 7);
 
-  popMatrix();
-  noFill();
-  stroke(255, 0, 0);
-  ellipse(point.x, point.y, 30, 30);
-  
-  
-  if ( tracking.size() > 1) {
-    for (int i = 1; i < tracking.size (); i++ ) {
-      stroke(map(i, 1, tracking.size(), 0, 255));
-      strokeWeight(map(i, 1, tracking.size(), 0.1, 3));
-      PVector f = tracking.get(i-1);
-      line(f.x, f.y, tracking.get(i).x, tracking.get(i).y);
+    popMatrix();
+    noFill();
+    stroke(255, 0, 0);
+    ellipse(point.x, point.y, 30, 30);
+
+
+    if ( tracking.size() > 1) {
+      for (int i = 1; i < tracking.size (); i++ ) {
+        stroke(map(i, 1, tracking.size(), 0, 255));
+        strokeWeight(map(i, 1, tracking.size(), 0.1, 3));
+        PVector f = tracking.get(i-1);
+        line(f.x, f.y, tracking.get(i).x, tracking.get(i).y);
+      }
+    }
+  } else {
+    if ( calibratingPoint != null ) {
+      fill(0, 255, 0);
+      ellipse(calibratingPoint.x, calibratingPoint.y, 20, 20);
     }
   }
 }
 
+void calibratingPoint(PVector p) {
+  println("Calibrating point: " + p);
+  calibratingPoint = p.get();
+}
+
+void calibrationEnded(boolean result, double acc, double accRight, double accLeft) {
+	calibrating = false;
+	println("REsult: " + result + " " + acc);
+}
 
 void onGazeUpdate(GazeData data) {
 
-  println(eyeTribe.isTracking() + " " + eyeTribe.isTrackingGaze() + " " + eyeTribe.isTrackingEyes() + " " + data.stateToString());
+  //println(eyeTribe.isTracking() + " " + eyeTribe.isTrackingGaze() + " " + eyeTribe.isTrackingEyes() + " " + data.stateToString());
   if ( eyeTribe.isTrackingGaze() && data.hasSmoothedGazeCoordinates() ) {
     point.x = (float)(data.smoothedCoordinates.x);
     point.y = (float)(data.smoothedCoordinates.y);
@@ -90,5 +112,17 @@ void onGazeUpdate(GazeData data) {
 }
 
 void trackerStateChanged(String state) {
-  println("Tracker state: " + state);
+  //println("Tracker state: " + state);
+}
+
+void keyPressed() {
+  if ( key == ' ' ) {
+    calibrating = true;
+    PVector calP[] = {
+      new PVector(100, 100), new PVector(width/2, 100), new PVector(width-100, 100), 
+      new PVector(100, height/2), new PVector(width/2, height/2), new PVector(width-100, height/2), 
+      new PVector(100, height-100), new PVector(width/2, height-100), new PVector(width-100, height-100)
+      };
+      eyeTribe.calibrate(calP);
+  }
 }

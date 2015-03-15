@@ -45,7 +45,7 @@ import com.theeyetribe.client.data.*;
  * @example Hello 
  */
 
-public class EyeTribe implements IGazeListener, ITrackerStateListener {
+public class EyeTribe implements IGazeListener, ITrackerStateListener, ICalibrationProcessHandler {
 	
 	// myParent is a reference to the parent sketch
 	PApplet myParent;
@@ -57,11 +57,17 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener {
 	
     private Method gazeUpdateMethod = null;
     private Method trackerStateChangedMethod = null;
+    private Method calibratingPointMethod = null;
+    private Method calibrationEndedMethod = null;
+    
 
 
 	private boolean isTracking = false;
 	private boolean isTrackingGaze = false;
 	private boolean isTrackingEyes = false;
+	
+	private PVector calibrationPoints[];
+	private int currentCalibrationPoint = 0;
 	
 	/**
 	 * a Constructor, usually called in the setup() method in your sketch to
@@ -93,6 +99,26 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener {
     	} catch (Exception e) {
     		System.err.println("trackerStateChanged() method not defined. ");
     	}    	
+    	
+		try {
+      		calibratingPointMethod =
+        	myParent.getClass().getMethod("calibratingPoint",  new Class[] { 
+        		PVector.class
+      		});
+      
+    	} catch (Exception e) {
+    		System.err.println("calibratingPoint() method not defined. ");
+    	}     
+    	
+		try {
+      		calibrationEndedMethod =
+        	myParent.getClass().getMethod("calibrationEnded",  new Class[] { 
+        		boolean.class, double.class, double.class, double.class
+      		});
+      
+    	} catch (Exception e) {
+    		System.err.println("calibrationEnded() method not defined. ");
+    	}       	 	
     
 		gm = GazeManager.getInstance();        
    		boolean success = gm.activate(GazeManager.ApiVersion.VERSION_1_0, GazeManager.ClientMode.PUSH);
@@ -185,5 +211,102 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener {
     }
     
     
+    public void calibrate(PVector calibrationPoints[]) {
+    	// Start calibration
+    	this.calibrationPoints = calibrationPoints;
+    	gm.calibrationStart(calibrationPoints.length, this);
+    	
+    	
+    }
+    
+     /**
+     * Called when a calibration process has been started.
+     */
+      @Override
+    public void onCalibrationStarted() {
+    	System.out.println("EyeTribe: Calibration started");
+    	currentCalibrationPoint = 0;
+    	
+    	
+    		try {
+        		calibratingPointMethod.invoke(myParent, new Object[] {
+          			calibrationPoints[currentCalibrationPoint]
+        		}    );
+      		} catch (Exception e) {
+        		System.err.println("Disabling calibration point feedback because of an error.");
+        		System.err.println(e.getMessage());
+        		e.printStackTrace();
+        		calibratingPointMethod = null;
+      		}
+    		gm.calibrationPointStart((int)calibrationPoints[currentCalibrationPoint].x, (int)calibrationPoints[currentCalibrationPoint].y);
+    		try {
+    			Thread.sleep(1500);
+    		} catch (InterruptedException ie) {
+    			System.err.println(ie.getMessage());
+    			ie.printStackTrace();
+    		}
+    		gm.calibrationPointEnd();
+    	
+    }
+
+    /**
+     * Called every time tracking of a single calibratioon points has completed.
+     * 
+     * @param progress 'normalized' progress [0..1.0d]
+     */
+      @Override
+    public void onCalibrationProgress(double progress) {
+    	System.out.println("EyeTribe: Calibration progress: " + progress);
+    	currentCalibrationPoint++;
+    	if ( currentCalibrationPoint >= calibrationPoints.length ) return;
+    	
+    	try {
+        		calibratingPointMethod.invoke(myParent, new Object[] {
+          			calibrationPoints[currentCalibrationPoint]
+        		}    );
+      		} catch (Exception e) {
+        		System.err.println("Disabling calibration point feedback because of an error.");
+        		System.err.println(e.getMessage());
+        		e.printStackTrace();
+        		calibratingPointMethod = null;
+      		}
+    		gm.calibrationPointStart((int)calibrationPoints[currentCalibrationPoint].x, (int)calibrationPoints[currentCalibrationPoint].y);
+    		try {
+    			Thread.sleep(1500);
+    		} catch (InterruptedException ie) {
+    			System.err.println(ie.getMessage());
+    			ie.printStackTrace();
+    		}
+    		gm.calibrationPointEnd();
+    }
+
+    /**
+     * Called when all calibration points have been collected and calibration processing begins.
+     */
+      @Override
+    public void onCalibrationProcessing() {
+    	System.out.println("EyeTribe: Calibration processing...");
+    }
+
+    /**
+     * Called when processing of calibration points and calibration as a whole has completed.
+     * 
+     * @param calibResult the result of the calibration process
+     */
+      @Override
+    public void onCalibrationResult(final CalibrationResult calibResult) {
+    	//System.out.println("EyeTribe: Calibration result: " + calibResult);
+    	try {
+        		calibrationEndedMethod.invoke(myParent, new Object[] {
+          			calibResult.result.booleanValue(), calibResult.averageErrorDegree.doubleValue(), calibResult.averageErrorDegreeLeft.doubleValue(),
+          			calibResult.averageErrorDegreeRight.doubleValue()
+        		}    );
+      		} catch (Exception e) {
+        		System.err.println("Disabling calibration ended feedback because of an error.");
+        		System.err.println(e.getMessage());
+        		e.printStackTrace();
+        		calibrationEndedMethod = null;
+      		}
+    }
 }
 
