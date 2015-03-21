@@ -28,6 +28,7 @@
 package org.jorgecardoso.processing.eyetribe;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import processing.core.*;
 
@@ -48,6 +49,8 @@ import com.theeyetribe.client.data.*;
 public class EyeTribe implements IGazeListener, ITrackerStateListener,
 		ICalibrationProcessHandler {
 
+	private int CALIBRATION_ATTEMPTS = 5;
+	
 	// myParent is a reference to the parent sketch
 	PApplet myParent;
 
@@ -66,6 +69,9 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 
 	private PVector calibrationPoints[];
 	private int currentCalibrationPoint = 0;
+	
+	// number of calibration/resampling attempts
+	private int calibrationAttempts = 0;
 
 	/**
 	 * a Constructor, usually called in the setup() method in your sketch to
@@ -98,7 +104,7 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 
 		try {
 			calibratingPointMethod = myParent.getClass().getMethod(
-					"calibratingPoint", new Class[] { PVector.class });
+					"calibratingPoint", new Class[] { PVector.class, boolean.class });
 
 		} catch (Exception e) {
 			System.err.println("calibratingPoint() method not defined. ");
@@ -237,23 +243,31 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 
 	public void calibrate(PVector calibrationPoints[]) {
 		// Start calibration
-		this.calibrationPoints = calibrationPoints;
-		gm.calibrationStart(calibrationPoints.length, this);
-
+		calibrationAttempts = 0;
+		calibrate(calibrationPoints, true);
+		
+		
 	}
 
-	/**
-	 * Called when a calibration process has been started.
-	 */
-	@Override
-	public void onCalibrationStarted() {
-		System.out.println("EyeTribe: Calibration started");
-		currentCalibrationPoint = 0;
 
-		try {
+    private void calibrate(PVector calibrationPoints[], boolean callStart) {
+    	this.calibrationPoints = calibrationPoints;
+    	this.calibrationAttempts++;
+    	if ( callStart ) {
+			gm.calibrationStart(calibrationPoints.length, this);
+		} else {
+			onCalibrationStarted();
+		}
+
+    }
+    
+    private void calPoint(int pointIndex) {
+    
+    	// call calibratingPoint in Processing to show the dot and let eyes rest
+    	try {
 			calibratingPointMethod
 					.invoke(myParent,
-							new Object[] { calibrationPoints[currentCalibrationPoint] });
+							new Object[] { calibrationPoints[pointIndex], true });
 		} catch (Exception e) {
 			System.err
 					.println("Disabling calibration point feedback because of an error.");
@@ -261,17 +275,46 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 			e.printStackTrace();
 			calibratingPointMethod = null;
 		}
-		gm.calibrationPointStart(
-				(int) calibrationPoints[currentCalibrationPoint].x,
-				(int) calibrationPoints[currentCalibrationPoint].y);
 		try {
-			Thread.sleep(1500);
+			Thread.sleep(200);
+		} catch (InterruptedException ie) {
+			System.err.println(ie.getMessage());
+			ie.printStackTrace();
+		}
+		
+		// call calibrationPointStart to start calibrating point
+		gm.calibrationPointStart(
+				(int) calibrationPoints[pointIndex].x,
+				(int) calibrationPoints[pointIndex].y);
+		try {
+			Thread.sleep(1300);
 		} catch (InterruptedException ie) {
 			System.err.println(ie.getMessage());
 			ie.printStackTrace();
 		}
 		gm.calibrationPointEnd();
+		try {
+			calibratingPointMethod
+					.invoke(myParent,
+							new Object[] { calibrationPoints[pointIndex], false });
+		} catch (Exception e) {
+			System.err
+					.println("Disabling calibration point feedback because of an error.");
+			System.err.println(e.getMessage());
+			e.printStackTrace();
+			calibratingPointMethod = null;
+		}
+    }
+    
+	/**
+	 * Called when a calibration process has been started.
+	 */
+	@Override
+	public void onCalibrationStarted() {
+		//System.out.println("EyeTribe: Calibration started");
+		currentCalibrationPoint = 0;
 
+		calPoint(currentCalibrationPoint);
 	}
 
 	/**
@@ -286,28 +329,7 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 		currentCalibrationPoint++;
 		if (currentCalibrationPoint >= calibrationPoints.length)
 			return;
-
-		try {
-			calibratingPointMethod
-					.invoke(myParent,
-							new Object[] { calibrationPoints[currentCalibrationPoint] });
-		} catch (Exception e) {
-			System.err
-					.println("Disabling calibration point feedback because of an error.");
-			System.err.println(e.getMessage());
-			e.printStackTrace();
-			calibratingPointMethod = null;
-		}
-		gm.calibrationPointStart(
-				(int) calibrationPoints[currentCalibrationPoint].x,
-				(int) calibrationPoints[currentCalibrationPoint].y);
-		try {
-			Thread.sleep(1500);
-		} catch (InterruptedException ie) {
-			System.err.println(ie.getMessage());
-			ie.printStackTrace();
-		}
-		gm.calibrationPointEnd();
+		calPoint(currentCalibrationPoint);	
 	}
 
 	/**
@@ -328,20 +350,43 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 	 */
 	@Override
 	public void onCalibrationResult(final CalibrationResult calibResult) {
-		// System.out.println("EyeTribe: Calibration result: " + calibResult);
-		try {
-			calibrationEndedMethod.invoke(myParent, new Object[] {
+		
+		ArrayList<PVector> recalibrate = new ArrayList<PVector>();
+		for ( CalibrationResult.CalibrationPoint cp : calibResult.calibpoints) {
+			if ( cp.state == 1 ) {
+				recalibrate.add(new PVector((float)cp.coordinates.x, (float)cp.coordinates.y));
+			}
+			//System.out.println(cp.state);
+		}
+		
+
+		
+		if ( recalibrate.size() > 0 && calibrationAttempts < CALIBRATION_ATTEMPTS) {
+			PVector []points = recalibrate.toArray(new PVector[recalibrate.size()]);
+			calibrate(points, false);
+		} else {
+			
+			if ( recalibrate.size() > 0   ) {
+				gm.calibrationAbort();
+			}
+			
+			// System.out.println("EyeTribe: Calibration result: " + calibResult);
+			try {
+				calibrationEndedMethod.invoke(myParent, new Object[] {
 					calibResult.result.booleanValue(),
 					calibResult.averageErrorDegree.doubleValue(),
 					calibResult.averageErrorDegreeLeft.doubleValue(),
 					calibResult.averageErrorDegreeRight.doubleValue(),
 					calibResult });
-		} catch (Exception e) {
-			System.err
+			} catch (Exception e) {
+				System.err
 					.println("Disabling calibration ended feedback because of an error.");
-			System.err.println(e.getMessage());
-			e.printStackTrace();
-			calibrationEndedMethod = null;
-		}
+				System.err.println(e.getMessage());
+				e.printStackTrace();
+				calibrationEndedMethod = null;
+			}
+		} 
+		
+		
 	}
 }
