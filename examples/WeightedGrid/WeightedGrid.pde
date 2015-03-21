@@ -1,15 +1,16 @@
 import org.jorgecardoso.processing.eyetribe.*;
 import com.theeyetribe.client.data.*;
-import java.util.Collections;
 
 int COLS = 10;
 int ROWS = 10;
 
 EyeTribe eyeTribe;
 
-int grid[][];
+float grid[][];
 
 PVector point;
+
+PImage img;
 
 boolean sketchFullScreen() {
   return true;
@@ -19,25 +20,26 @@ boolean sketchFullScreen() {
 void setup() {
   size(displayWidth, displayHeight);
   //size(800, 600);
-
+  img = loadImage("cat.jpg");
+  
   smooth();
-  grid = new int[ROWS][COLS];
+  grid = new float[ROWS][COLS];
   point = new PVector();
   eyeTribe = new EyeTribe(this);
 }
 
 void draw() {
   background(0);
-
+  image(img, 0, 0, width, height);
   noStroke();
   for ( int i = 0; i < ROWS*COLS; i++ ) {
     int x = i % COLS;
     int y = i / ROWS;
 
-    fill(grid[y][x]);
+    fill(#2FACC4, 255-grid[y][x]);
     rect(x*width/COLS, y*height/ROWS, width/COLS, height/ROWS);
     if ( grid[y][x] > 0 ) {
-      grid[y][x] --;
+      grid[y][x] -= 0.1;
     }
   }
 
@@ -49,14 +51,13 @@ void draw() {
 
 void onGazeUpdate(PVector gaze, PVector leftEye_, PVector rightEye_, GazeData data) {
 
-  //println(eyeTribe.isTracking() + " " + eyeTribe.isTrackingGaze() + " " + eyeTribe.isTrackingEyes() + " " + data.stateToString());
   if ( gaze != null ) {
-    point = gaze.get();
-    //println(point);
-    int x = (int)constrain(map(gaze.x, 0, width, 0, COLS-1), 0, COLS-1);
-    int y = (int)constrain(map(gaze.y, 0, height, 0, ROWS-1), 0, ROWS-1);
-    println(x + " " + y);
-    grid[y][x] += 5;
+    point = gaze.get(); 
+
+    int x = (int)constrain(round(map(point.x, 0, width, 0, COLS-1)), 0, COLS-1);
+    int y = (int)constrain(round(map(point.y, 0, height, 0, ROWS-1)), 0, ROWS-1);
+    
+    grid[y][x] = constrain( grid[y][x]+10, 0, 255);
   }
 }
 
