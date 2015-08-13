@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WebSocket EyeTribe Client</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<style>
+	#point {
+		position: fixed;
+		width: 100px;
+		height: 100px;
+		background-color:red;
+	}
+	</style>
+	
+   <script type="text/javascript">
+        
+
+        ws = new WebSocket("ws://localhost:8887");
+        ws.onopen = function() {
+            log("[WebSocket#onopen]\n");
+        }
+		
+        ws.onmessage = function(e) {
+			//if(e.data.indexOf( "attention_" ) == 0 ) value = e.data.substring(10);
+			//valueInt = parseInt(value);
+			data = JSON.parse(e.data);
+            
+			
+			if ( data && data.gaze ) {
+				var p = document.getElementById("point");
+				p.style.left = data.gaze.x+ "px";
+				p.style.top = data.gaze.y + "px";
+			}
+        }
+        ws.onclose = function() {
+
+        }
+
+    </script>
+  </head>
+  <body>
+	
+   <div id="point">Point</div>
+  </body>
+</html>

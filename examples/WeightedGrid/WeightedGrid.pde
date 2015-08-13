@@ -1,3 +1,10 @@
+/**
+ * Eye Tribe for Processing library
+ * Weighted Grid example: Simple example showing how to get gaze data.
+ * August 2015
+ * http://jorgecardoso.eu
+ **/
+ 
 import org.jorgecardoso.processing.eyetribe.*;
 import com.theeyetribe.client.data.*;
 
@@ -12,13 +19,9 @@ PVector point;
 
 PImage img;
 
-boolean sketchFullScreen() {
-  return true;
-  //return false;
-}
 
 void setup() {
-  size(displayWidth, displayHeight);
+  fullScreen();
   //size(800, 600);
   img = loadImage("cat.jpg");
   
@@ -64,4 +67,3 @@ void onGazeUpdate(PVector gaze, PVector leftEye_, PVector rightEye_, GazeData da
 void trackerStateChanged(String state) {
   println("Tracker state: " + state);
 }
-

@@ -36,14 +36,7 @@ import com.theeyetribe.client.*;
 import com.theeyetribe.client.data.*;
 
 /**
- * This is a template class and can be used to start a new processing library or
- * tool. Make sure you rename this class as well as the name of the example
- * package 'template' to your own library or tool naming convention.
  * 
- * (the tag example followed by the name of an example included in folder
- * 'examples' will automatically include the example in the javadoc.)
- * 
- * @example Hello
  */
 
 public class EyeTribe implements IGazeListener, ITrackerStateListener,
@@ -70,9 +63,16 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 	private PVector calibrationPoints[];
 	private int currentCalibrationPoint = 0;
 	
+	private int calibrationPointInterval;
+	private int calibrationPointDuration;
+	
 	// number of calibration/resampling attempts
 	private int calibrationAttempts = 0;
 
+	public EyeTribe(PApplet theParent) {
+		this(theParent, 300, 1200);
+	}
+	
 	/**
 	 * a Constructor, usually called in the setup() method in your sketch to
 	 * initialize and start the library.
@@ -80,8 +80,11 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 	 * @example Hello
 	 * @param theParent
 	 */
-	public EyeTribe(PApplet theParent) {
+	public EyeTribe(PApplet theParent, int calibrationPointInterval, int calibrationPointDuration) {
 		myParent = theParent;
+		this.calibrationPointInterval = calibrationPointInterval;
+		this.calibrationPointDuration = calibrationPointDuration;
+		
 		welcome();
 
 		try {
@@ -276,7 +279,7 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 			calibratingPointMethod = null;
 		}
 		try {
-			Thread.sleep(200);
+			Thread.sleep(this.calibrationPointInterval);
 		} catch (InterruptedException ie) {
 			System.err.println(ie.getMessage());
 			ie.printStackTrace();
@@ -287,7 +290,7 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 				(int) calibrationPoints[pointIndex].x,
 				(int) calibrationPoints[pointIndex].y);
 		try {
-			Thread.sleep(1300);
+			Thread.sleep(this.calibrationPointDuration);
 		} catch (InterruptedException ie) {
 			System.err.println(ie.getMessage());
 			ie.printStackTrace();
@@ -318,7 +321,7 @@ public class EyeTribe implements IGazeListener, ITrackerStateListener,
 	}
 
 	/**
-	 * Called every time tracking of a single calibratioon points has completed.
+	 * Called every time tracking of a single calibration points has completed.
 	 * 
 	 * @param progress
 	 *            'normalized' progress [0..1.0d]

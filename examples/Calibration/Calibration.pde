@@ -1,27 +1,38 @@
+/**
+ * Eye Tribe for Processing library
+ * Calibration example: Shows how to perform the calibration of the device.
+ * August 2015
+ * http://jorgecardoso.eu
+ **/
+ 
+
 import org.jorgecardoso.processing.eyetribe.*;
 import com.theeyetribe.client.data.*;
 import java.util.Collections;
 
 EyeTribe eyeTribe;
+
+// list of previously tracked points
 ArrayList<PVector> tracking;
 
 PVector calibratingPoint = null;
 PVector point;
 PVector leftEye, rightEye;
 
+// Indicates the current state: 
+// 0: not calibrating, tracks and displays the gaze points
+// 1: not calibrating, shows the start message
+// 2: calibrating
 int calibrating = 0;
-int calibrationDuration = 1500;
+int calibrationPointInterval = 300; // 300 milliseconds between points
+int calibrationDuration = 1200; // point animation lasts for 1200 milliseconds
 int calibrationStart = 0;
 
-String calibrationResult = "";
+String calibrationResult = "Hit space to start calibration.";
 
-boolean sketchFullScreen() {
-  return true;
-  //return false;
-}
 
 void setup() {
-  size(displayWidth, displayHeight);
+  fullScreen();
   //size(800, 600);
 
   smooth();
@@ -30,13 +41,13 @@ void setup() {
   leftEye = new PVector();
   rightEye = new PVector();
 
-  eyeTribe = new EyeTribe(this);
+  eyeTribe = new EyeTribe(this, calibrationPointInterval, calibrationDuration);
 
   PFont font = createFont("", 40);
   textFont(font);
 }
 
-void draw() {
+synchronized void draw() {
   background(0);
   fill(255);
 
@@ -81,17 +92,17 @@ void draw() {
     }
   } else if ( calibrating == 1 ) {
     text("Hit space again, and follow the circles...", width/2-textWidth("Hit space again, and follow the circles...")/2, height/2);
+    calibrationResult = "";
   } else {
     //text("Calibrating", width/2-textWidth("Calibrating")/2, 50);
     if ( calibratingPoint != null ) {
-      noFill();
-      stroke(255);
-      float s = map(millis(), calibrationStart, calibrationStart+calibrationDuration, 60, -40);
+      fill(255);
+      noStroke();
+      float s = map(millis(), calibrationStart, calibrationStart+calibrationDuration, 40, 20);
       ellipse(calibratingPoint.x, calibratingPoint.y, s, s);
-      fill(255, 0, 0);
-      stroke(200);
-      strokeWeight(2);
-      ellipse(calibratingPoint.x, calibratingPoint.y, 5, 5);
+      fill(0, 0, 0);
+      s = map(millis(), calibrationStart, calibrationStart+calibrationDuration, 1, 7);
+      ellipse(calibratingPoint.x, calibratingPoint.y, s, s);
     }
   }
 
@@ -99,7 +110,7 @@ void draw() {
   text(calibrationResult, 100, height-100);
 }
 
-void calibratingPoint(PVector p, boolean start) {
+synchronized void calibratingPoint(PVector p, boolean start) {
   if (start) {
     println("Calibrating point: " + p);
     calibratingPoint = p.get();
@@ -116,11 +127,13 @@ void calibrationEnded(boolean result, double acc, double accRight, double accLef
 
   if ( result ) {
     calibrationResult = "Calibration Result: ok. " + rate(acc);
+  } else {
+    calibrationResult = "Calibration failed, try again.";
   }
 }
 
 
-void onGazeUpdate(PVector gaze, PVector leftEye_, PVector rightEye_, GazeData data) {
+synchronized void onGazeUpdate(PVector gaze, PVector leftEye_, PVector rightEye_, GazeData data) {
 
   //println(eyeTribe.isTracking() + " " + eyeTribe.isTrackingGaze() + " " + eyeTribe.isTrackingEyes() + " " + data.stateToString());
   if ( gaze != null ) {
@@ -129,7 +142,6 @@ void onGazeUpdate(PVector gaze, PVector leftEye_, PVector rightEye_, GazeData da
     if (tracking.size() > 500 ) {
       tracking.remove(0);
     }
-    //println(point);
   }
 
   leftEye = leftEye_;
@@ -160,12 +172,6 @@ void keyPressed() {
 
       Collections.shuffle(points);
       PVector calP[] = points.toArray(new PVector[points.size()]);
-      /*
-      PVector calP[] = {
-       , new PVector(width/2, 100), new PVector(width-100, 100), 
-       new PVector(100, height/2), new PVector(width/2, height/2), new PVector(width-100, height/2), 
-       new PVector(100, height-100), new PVector(width/2, height-100), new PVector(width-100, height-100)
-       };*/
 
       eyeTribe.calibrate(calP);
     }
