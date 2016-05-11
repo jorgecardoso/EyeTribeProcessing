@@ -40,7 +40,8 @@ body {
 #download,
 #examples,
 #demos,
-#misc {
+#misc,
+#projectsusing {
 	width:480px;
 	float:left;
 	margin-right:24px;

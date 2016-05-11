@@ -2,7 +2,7 @@
 <classpath>
 	<classpathentry kind="src" output="bin" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="/Users/jorge/EyeTribeProcessing/lib/gson-2.3.jar"/>
-	<classpathentry kind="lib" path="/Users/jorge/Desktop/Processing.app/Contents/Java/core.jar"/>
+	<classpathentry kind="lib" path="/Volumes/Macintosh HD/Users/jorge/Google Drive/Programming/Processing/Libraries/EyeTribeProcessing/lib/gson-2.3.jar"/>
+	<classpathentry kind="lib" path="/Applications/Processing.app/Contents/Java/core.jar"/>
 	<classpathentry kind="output" path="resources/code"/>
 </classpath>
